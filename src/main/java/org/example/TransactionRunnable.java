@@ -11,6 +11,7 @@ public class TransactionRunnable implements Runnable {
     private Random random;
     private int numTransactions;
     private static final Logger logger = LogManager.getLogger(TransactionRunnable.class);
+    private static final Object lock = new Object(); // Общий замок для всех транзакций
 
     public TransactionRunnable(List<Account> accounts, Random random, int numTransactions) {
         this.accounts = accounts;
@@ -24,7 +25,8 @@ public class TransactionRunnable implements Runnable {
             try {
                 Thread.sleep(random.nextInt(1001) + 1000); // Засыпаем от 1000 до 2000 мс
             } catch (InterruptedException e) {
-                e.printStackTrace();
+                logger.error("Thread interrupted while sleeping", e);
+                Thread.currentThread().interrupt(); // Preserve interrupt status
             }
 
             // Выполняем транзакцию
@@ -40,16 +42,17 @@ public class TransactionRunnable implements Runnable {
     }
 
     private void transferMoney(Account from, Account to, int amount) {
-        synchronized (from) {
-            synchronized (to) {
-                if (from.getMoney() >= amount) {
-                    from.setMoney(from.getMoney() - amount);
-                    to.setMoney(to.getMoney() + amount);
-                    String message = "Transaction: " + from.getId() + " -> " + to.getId() + ", Amount: " + amount;
-                    logger.info(message);
-                    System.out.println(message); // Выводим в консоль для наглядности
-                }
+        synchronized (lock) {
+            if (from.getMoney() > amount) {
+                from.setMoney(from.getMoney() - amount);
+                to.setMoney(to.getMoney() + amount);
+                String message = "Transaction: " + from.getId() + " -> " + to.getId() + ", Amount: " + amount;
+                logger.info(message);
+                System.out.println(message); // Выводим в консоль для наглядности
+            } else {
+                logger.warn("Not enough money in account " + from.getId() + " to complete transaction or invalid amount");
             }
         }
     }
+
 }
