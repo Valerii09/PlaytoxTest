@@ -30,7 +30,7 @@ public class Main {
         int remainingTransactions = NUM_TRANSACTIONS % NUM_THREADS;
 
         // Создаем и запускаем потоки для выполнения транзакций
-        ExecutorService executorService = Executors.newCachedThreadPool();
+        ExecutorService executorService = Executors.newFixedThreadPool(NUM_THREADS);
         for (int i = 0; i < NUM_THREADS; i++) {
             int transactions = transactionsPerThread;
             if (i < remainingTransactions) {
@@ -46,6 +46,10 @@ public class Main {
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
-    }
 
+        // Выводим конечные балансы после всех транзакций
+        for (Account account : accounts) {
+            System.out.println("Account " + account.getId() + " balance: " + account.getMoney());
+        }
+    }
 }

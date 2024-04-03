@@ -6,12 +6,11 @@ import org.apache.logging.log4j.Logger;
 import java.util.List;
 import java.util.Random;
 
-public class TransactionRunnable implements Runnable {
-    private List<Account> accounts;
-    private Random random;
-    private int numTransactions;
+class TransactionRunnable implements Runnable {
+    private final List<Account> accounts;
+    private final Random random;
+    private final int numTransactions;
     private static final Logger logger = LogManager.getLogger(TransactionRunnable.class);
-    private static final Object lock = new Object(); // Общий замок для всех транзакций
 
     public TransactionRunnable(List<Account> accounts, Random random, int numTransactions) {
         this.accounts = accounts;
@@ -31,28 +30,30 @@ public class TransactionRunnable implements Runnable {
 
             // Выполняем транзакцию
             Account from = getRandomAccount();
-            Account to = getRandomAccount();
+            Account to;
+            do {
+                to = getRandomAccount();
+            } while (from.getId().equals(to.getId())); // Проверка, чтобы аккаунты не были одинаковыми
+
             int amount = random.nextInt(from.getMoney() + 1);
-            transferMoney(from, to, amount);
+
+            // Блокируем сначала меньший номер аккаунта, затем больший, чтобы избежать дэдлока
+            Account firstAccount = (from.getId().compareTo(to.getId()) < 0) ? from : to;
+            Account secondAccount = (from.getId().compareTo(to.getId()) < 0) ? to : from;
+
+            synchronized (firstAccount) {
+                synchronized (secondAccount) {
+                    from.withdraw(amount);
+                    to.deposit(amount);
+                    String message = "Transaction: " + from.getId() + " -> " + to.getId() + ", Amount: " + amount;
+                    logger.info(message);
+                    System.out.println(message); // Выводим в консоль для наглядности
+                }
+            }
         }
     }
 
     private Account getRandomAccount() {
         return accounts.get(random.nextInt(accounts.size()));
     }
-
-    private void transferMoney(Account from, Account to, int amount) {
-        synchronized (lock) {
-            if (from.getMoney() > amount) {
-                from.setMoney(from.getMoney() - amount);
-                to.setMoney(to.getMoney() + amount);
-                String message = "Transaction: " + from.getId() + " -> " + to.getId() + ", Amount: " + amount;
-                logger.info(message);
-                System.out.println(message); // Выводим в консоль для наглядности
-            } else {
-                logger.warn("Not enough money in account " + from.getId() + " to complete transaction or invalid amount");
-            }
-        }
-    }
-
 }

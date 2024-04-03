@@ -1,7 +1,7 @@
 package org.example;
 
-public class Account {
-    private String id;
+class Account {
+    private final String id;
     private int money;
 
     public Account(String id, int money) {
@@ -17,7 +17,16 @@ public class Account {
         return money;
     }
 
-    public synchronized void setMoney(int money) {
-        this.money = money;
+    public synchronized void deposit(int amount) {
+        money += amount;
+    }
+
+    public synchronized void withdraw(int amount) {
+        if (money >= amount) {
+            money -= amount;
+        } else {
+            // Если недостаточно средств, возможно, нужно сгенерировать исключение или вернуть какой-то код ошибки
+            throw new IllegalArgumentException("Not enough money in account " + id + " to complete transaction or invalid amount");
+        }
     }
 }
